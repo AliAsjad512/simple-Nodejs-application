@@ -1,6 +1,7 @@
 FROM node:18
-RUN apt-get udpate && \ apt install npm
-COPY ./my-node-app .
-WORKDIR /
+WORKDIR /app
+COPY package*.json ./
+RUN npm install
+COPY ..
 EXPOSE 3000
-CMD["node","server.js","npm start"]
+CMD["node"]
