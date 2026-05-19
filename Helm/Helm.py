@@ -23,3 +23,10 @@ class HelmReleaseManager:
             return []
         releases = json.loads(out)
         return releases
+    def release_history(self, release_name):
+        cmd = ['history', release_name, '-o', 'json']
+        rc, out, err = self.run_cmd(cmd)
+        if rc != 0:
+            print(f"Error: {err}")
+            return []
+        return json.loads(out)
