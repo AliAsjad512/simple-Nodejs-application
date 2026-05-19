@@ -12,3 +12,14 @@ class HelmReleaseManager:
             full_cmd.extend(['-n', self.namespace])
         result = subprocess.run(full_cmd, capture_output=True, text=True)
         return result.returncode, result.stdout, result.stderr
+   def list_releases(self, all_namespaces=False):
+        if all_namespaces:
+            cmd = ['list', '-a', '--all-namespaces', '-o', 'json']
+        else:
+            cmd = ['list', '-a', '-o', 'json']
+        rc, out, err = self.run_cmd(cmd)
+        if rc != 0:
+            print(f"Error: {err}")
+            return []
+        releases = json.loads(out)
+        return releases
