@@ -30,3 +30,12 @@ class HelmReleaseManager:
             print(f"Error: {err}")
             return []
         return json.loads(out)
+
+     def rollback(self, release_name, revision):
+        cmd = ['rollback', release_name, str(revision)]
+        rc, out, err = self.run_cmd(cmd)
+        if rc == 0:
+            print(f"✅ Rolled back {release_name} to revision {revision}")
+        else:
+            print(f"❌ Rollback failed: {err}")
+        return rc
