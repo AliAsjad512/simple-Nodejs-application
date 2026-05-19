@@ -54,3 +54,17 @@ class HelmReleaseManager:
     parser.add_argument('--revision', type=int, help='Revision number for rollback')
     parser.add_argument('--all-namespaces', action='store_true')
     args = parser.parse_args()
+     manager = HelmReleaseManager(args.namespace)
+    if args.action == 'list':
+        releases = manager.list_releases(args.all_namespaces)
+        for rel in releases:
+            print(f"{rel['name']}: {rel['status']} - {rel['namespace']}")
+    elif args.action == 'history':
+        history = manager.release_history(args.release)
+        for rev in history:
+            print(f"rev {rev['revision']}: {rev['status']} - {rev['updated']}")
+    elif args.action == 'rollback':
+        manager.rollback(args.release, args.revision)
+    elif args.action == 'values':
+        values = manager.get_values(args.release)
+        print(json.dumps(values, indent=2))
