@@ -46,3 +46,11 @@ class HelmReleaseManager:
         if rc == 0:
             return json.loads(out)
         return {}
+    if __name__ == '__main__':
+    parser = argparse.ArgumentParser(description='Helm Release Manager')
+    parser.add_argument('--namespace', help='Kubernetes namespace')
+    parser.add_argument('--action', choices=['list', 'history', 'rollback', 'values'], required=True)
+    parser.add_argument('--release', help='Release name')
+    parser.add_argument('--revision', type=int, help='Revision number for rollback')
+    parser.add_argument('--all-namespaces', action='store_true')
+    args = parser.parse_args()
