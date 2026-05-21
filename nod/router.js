@@ -1,63 +1,52 @@
-const express = require('express');
-const cors = require('cors');
-const helmet = require('helmet');
-const rateLimit = require('express-rate-limit');
-const dotenv = require('dotenv');
-const winston = require('winston');
+const si = require('systeminformation');
 
-dotenv.config();
+module.exports = (logger) => {
+  const router = require('express').Router();
 
-// Setup logging
-const logger = winston.createLogger({
-  level: process.env.LOG_LEVEL || 'info',
-  format: winston.format.combine(
-    winston.format.timestamp(),
-    winston.format.json()
-  ),
-  transports: [
-    new winston.transports.File({ filename: 'logs/error.log', level: 'error' }),
-    new winston.transports.File({ filename: 'logs/combined.log' }),
-    new winston.transports.Console({ format: winston.format.simple() })
-  ]
-});
-
-const app = express();
-
-// Middleware
-app.use(helmet());
-app.use(cors());
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
-
-// Rate limiting
-const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100,
-  message: 'Too many requests from this IP'
-});
-app.use('/api/', limiter);
-
-// Routes
-app.use('/api/health', require('./routes/health')(logger));
-app.use('/api/system', require('./routes/system')(logger));
-app.use('/api/webhook', require('./routes/webhook')(logger));
-
-// Root endpoint
-app.get('/', (req, res) => {
-  res.json({
-    name: 'DevOps Dashboard',
-    version: '1.0.0',
-    endpoints: ['/api/health', '/api/system', '/api/webhook']
+  // Simple health check
+  router.get('/', (req, res) => {
+    res.json({ status: 'ok', timestamp: new Date().toISOString() });
   });
-});
 
-// Error handling middleware
-app.use((err, req, res, next) => {
-  logger.error(err.stack);
-  res.status(500).json({ error: 'Something went wrong!' });
-});
+  // Detailed health (CPU, memory, disk)
+  router.get('/detailed', async (req, res) => {
+    try {
+      const [cpu, memory, disk] = await Promise.all([
+        si.currentLoad(),
+        si.mem(),
+        si.fsSize()
+      ]);
+      res.json({
+        status: 'healthy',
+        timestamp: new Date().toISOString(),
+        metrics: {
+          cpu: {
+            load: cpu.currentLoad.toFixed(2),
+            cores: cpu.cpus.length
+          },
+          memory: {
+            total: (memory.total / 1024 / 1024 / 1024).toFixed(2) + ' GB',
+            used: (memory.active / 1024 / 1024 / 1024).toFixed(2) + ' GB',
+            percent: ((memory.active / memory.total) * 100).toFixed(2)
+          },
+          disk: disk.map(d => ({
+            mount: d.mount,
+            used: (d.used / 1024 / 1024 / 1024).toFixed(2) + ' GB',
+            available: (d.available / 1024 / 1024 / 1024).toFixed(2) + ' GB',
+            percent: d.use
+          }))
+        }
+      });
+    } catch (error) {
+      logger.error('Health check failed: ' + error.message);
+      res.status(500).json({ status: 'unhealthy', error: error.message });
+    }
+  });
 
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-  logger.info(`DevOps Dashboard running on port ${PORT}`);
-});
+  // Docker health check endpoint
+  router.get('/docker', (req, res) => {
+    res.status(200).send('OK');
+  });
+
+  return router;
+};
